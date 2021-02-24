@@ -78,3 +78,7 @@ analytic <- analytic %>%
   filter(complete.cases(.)) %>%
   rename(schname = schname.x) %>%
   select(-schname.y)
+
+# save
+
+save(analytic, file="data/analytic.Rdata")
