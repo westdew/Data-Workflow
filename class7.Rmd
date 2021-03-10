@@ -95,3 +95,58 @@ analytic <- left_join(
 
 ## Analyses
 
+Correlation
+
+```{r}
+cor(analytic$star_rating, analytic$direct_cert_per, use = "complete.obs")
+```
+
+Linear Model
+
+```{r}
+fit <- lm(star_rating ~ direct_cert_per, data=analytic)
+
+print(fit)
+```
+
+```{r}
+print(summary(fit))
+```
+
+```{r}
+formula <- as.formula("star_rating ~ direct_cert_per")
+
+fit <- lm(formula, data=analytic)
+
+print(fit)
+```
+
+```{r}
+library(broom)
+
+tidy(fit)
+```
+
+```{r}
+augment(fit)
+```
+
+```{r}
+glance(fit)
+```
+
+```{r}
+library(knitr)
+library(kableExtra)
+
+tidy(fit) %>% kable %>% kable_styling
+```
+
+```{r, results='asis'}
+library(stargazer)
+
+r <- stargazer(fit, type="html")
+
+suppressWarnings(print(r))
+```
+
