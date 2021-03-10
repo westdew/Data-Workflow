@@ -1,0 +1,97 @@
+---
+title: "Class 7 - R Notebooks & Statistics in R"
+output:
+  html_notebook: default
+---
+
+```{r}
+rm(list=ls())
+
+library(tidyverse)
+
+## import data
+
+# maryland report cards
+msde_report_cards <- read_csv("data/2019_Accountability_Schools.csv")
+
+# ccd direct certification
+ccd_direct_cert <- read_csv("data/ccd_sch_033_1819_l_1a_091019.csv", 
+                            col_types = cols(
+                              SCHOOL_YEAR = col_character(),
+                              FIPST = col_character(),
+                              STATENAME = col_character(),
+                              ST = col_character(),
+                              SCH_NAME = col_character(),
+                              STATE_AGENCY_NO = col_character(),
+                              UNION = col_character(),
+                              ST_LEAID = col_character(),
+                              LEAID = col_character(),
+                              ST_SCHID = col_character(),
+                              NCESSCH = col_character(),
+                              SCHID = col_character(),
+                              DATA_GROUP = col_character(),
+                              LUNCH_PROGRAM = col_character(),
+                              STUDENT_COUNT = col_double(),
+                              TOTAL_INDICATOR = col_character(),
+                              DMS_FLAG = col_character()
+                              )
+                            )
+```
+
+### MSDE Report Card
+
+- state_schid : "MD-" + LSS Number {2 digits} + "-" + LSS Number {2 digits} + School Number {4 digits}
+- school_name : School Name
+- star_rating : Star Rating
+
+Observations - All Baltimore City Schools : LSS Number == 30
+
+```{r}
+msde_report_cards <- msde_report_cards %>%
+  filter(`LSS Number` == 30) %>%
+  mutate(
+    lss_number_f <- sprintf("%02i", `LSS Number`),
+    school_number_f <- sprintf("%04i", `School Number`),
+    state_schid = paste0("MD-", lss_number_f, "-", lss_number_f, school_number_f),
+  ) %>%
+  rename(school_name = `School Name`, star_rating = `Star Rating`) %>%
+  select(state_schid, school_name, star_rating)
+```
+
+### CCD Direct Certification
+
+- state_schid : ST_SCHID
+- school_name : SCH_NAME
+- direct_cert_per : Calculated after reshape to wide { direct_cert_num / total_enrollment * 100 }
+
+Observations - All Baltimore City Schools : ST_LEAID == "MD-30"
+
+```{r}
+ccd_direct_cert <- ccd_direct_cert %>%
+  filter(
+    LUNCH_PROGRAM == "Free lunch qualified" | LUNCH_PROGRAM == "Not Applicable",
+    ST_LEAID == "MD-30"
+  ) %>%
+  select(ST_SCHID, SCH_NAME, DATA_GROUP, STUDENT_COUNT) %>%
+  pivot_wider(
+    c(ST_SCHID, SCH_NAME),
+    names_from = DATA_GROUP,
+    values_from = STUDENT_COUNT
+  ) %>%
+  magrittr::set_colnames(c("state_schid", "school_name", "total_enrollment", "direct_cert_num")) %>%
+  mutate(direct_cert_per = direct_cert_num / total_enrollment * 100) %>%
+  select(-total_enrollment, -direct_cert_num)
+```
+
+### Create Analytic
+
+```{r}
+analytic <- left_join(
+  ccd_direct_cert,
+  msde_report_cards,
+  by = "state_schid"
+)
+```
+
+## Analyses
+
