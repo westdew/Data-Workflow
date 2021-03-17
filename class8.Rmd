@@ -1,0 +1,89 @@
+---
+title: "R Notebook"
+author:
+  - "Nathaniel A. Dewey"
+output:
+  html_notebook:
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+rm(list=ls())
+
+# load libraries
+library(tidyverse)
+library(patchwork)
+
+# setup R & libraries
+options(scipen=999) # gets rid of scientific notation
+#knitr::opts_chunk$set(echo = FALSE # don't include code in notebook (user can still download rmd file)
+theme_set(theme_classic())
+
+# define functions
+##
+
+# load data
+data(mtcars)
+```
+
+## Analyses of Car Data
+
+Examining association between miles per gallon (*mpg*) and horse power (*hp*).
+
+```{r}
+ggplot(mtcars) +
+  geom_hline(aes(yintercept=20), linetype="dashed", color="blue") +
+  geom_point(aes(x = hp, y = mpg)) +
+  geom_smooth(aes(x = hp, y = mpg), formula="y ~ x", method="lm", color="red") +
+  labs(x = "Horsepower (hp)", y = "Miles per Gallon (mpg)", title = "MPG vs. HP", subtitle="Subtitle", caption = "Note: Red line is a linear model.")
+  #geom_smooth(aes(x = hp, y = mpg), formula="y ~ x", method="loess", color="purple")
+```
+ 
+```{r}
+mtcars %>%
+  arrange(gear, hp) %>%
+  ggplot() +
+    geom_col(aes(x = factor(gear, levels=3:5, labels=c("3 Gear", "4 Gear", "5 Gear")), y = hp, fill = hp), position=position_dodge2(width = 0.9, preserve = "single")) +
+    labs(x = "", y = "Horsepower (hp)", fill = "Horsepower (hp)")
+```
+ 
+### Faceting
+
+#### Wrap
+
+```{r}
+ggplot(mtcars) +
+  geom_point(aes(x = hp, y = mpg)) +
+  labs(x = "Horsepower (hp)", y = "Miles per Gallon (mpg)") +
+  facet_wrap(vars(factor(gear, levels=3:5, labels=c("3 Gear", "4 Gear", "5 Gear"))))
+```
+#### Grid
+
+```{r, fig.height=9, fig.width=9}
+ggplot(mtcars) +
+  geom_point(aes(x = hp, y = mpg)) +
+  labs(x = "Horsepower (hp)", y = "Miles per Gallon (mpg)") +
+  facet_grid(
+    rows=vars(carb),
+    cols=vars(factor(gear, levels=3:5, labels=c("3 Gear", "4 Gear", "5 Gear")))
+  )
+```
+
+### Patchwork
+
+```{r, fig.width=12}
+p1 <- ggplot(mtcars) +
+  geom_hline(aes(yintercept=20), linetype="dashed", color="blue") +
+  geom_point(aes(x = hp, y = mpg)) +
+  geom_smooth(aes(x = hp, y = mpg), formula="y ~ x", method="lm", color="red") +
+  labs(x = "Horsepower (hp)", y = "Miles per Gallon (mpg)")
+
+p2 <- mtcars %>%
+  arrange(gear, hp) %>%
+  ggplot() +
+    geom_col(aes(x = factor(gear, levels=3:5, labels=c("3 Gear", "4 Gear", "5 Gear")), y = hp, fill = hp), position=position_dodge2(width = 0.9, preserve = "single")) +
+    labs(x = "", y = "Horsepower (hp)", fill = "Horsepower (hp)")
+
+p1 + p2
+```
+
