@@ -91,6 +91,8 @@ analytic <- left_join(
   msde_report_cards,
   by = "state_schid"
 )
+
+save(analytic, file="data/analytic.RData")
 ```
 
 ## Analyses

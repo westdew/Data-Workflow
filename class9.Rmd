@@ -1,0 +1,80 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+rm(list=ls())
+
+library(tidyverse)
+library(cluster) # k-means, hierarchical clustering
+library(factoextra) # k-means, hierarchical clustering
+library(rpart) # CART
+library(rattle) # CART
+
+## load data
+data(iris)
+```
+
+## Clustering (Unsupervised Learning)
+
+### k-means
+
+```{r}
+model <- kmeans(iris[,1:4], 3, nstart = 10)
+
+iris$cluster <- model$cluster
+
+table(iris$Species, iris$cluster) %>% print
+```
+
+```{r}
+fviz_nbclust(iris[,1:4], kmeans, method = "wss")
+```
+```{r}
+fviz_nbclust(iris[,1:4], kmeans, method = "silhouette")
+```
+```{r}
+model <- kmeans(iris[,1:4], centers = 3, nstart = 20)
+
+sil <- silhouette(model$cluster, dist(iris[,1:4]))
+fviz_silhouette(sil)
+```
+```{r}
+fviz_cluster(model, iris[,1:4], ellipse.type = "norm")
+```
+### hierarchical
+
+```{r, fig.width=20}
+named_iris <- iris[,1:4]
+rownames(named_iris) <- paste0(iris$Species, 1:length(iris$Species))
+
+hc <- hclust(dist(named_iris), method = "ward.D2")
+
+plot(hc, cex = 0.6, hang = -1)
+```
+
+```{r, fig.width=20}
+plot(hc, cex = 0.6, hang = -1)
+rect.hclust(hc, k = 3, border = 2:5)
+```
+
+```{r}
+named_iris$cluster <- cutree(hc, k=3)
+
+table(iris$Species, named_iris$cluster) %>% print
+```
+
+
+## Classification (Supervised Learning)
+
+```{r, fig.width = 10}
+mytree <- rpart(
+  Species ~ Sepal.Length + Sepal.Width + Petal.Length + Petal.Width, 
+  data = iris, 
+  method = "class"
+)
+
+fancyRpartPlot(mytree, caption = NULL)
+```
+
