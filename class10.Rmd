@@ -1,0 +1,35 @@
+---
+title: "School Analysis"
+output: pdf_document
+params:
+  dbn: 18K635
+---
+
+```{r, echo=F, include=F}
+rm(list=ls()[! ls() %in% c("params")])
+
+library(tidyverse)
+library(lubridate)
+library(patchwork)
+
+load("data/nyc1821.RData")
+```
+
+```{r, echo=F, results='asis'}
+cat(paste0("# ", params$dbn))
+```
+
+```{r, echo=F}
+df <- analytic %>% filter(dbn == params$dbn)
+
+p1 <- ggplot(df) +
+  geom_line(aes(x = day, y = per_present)) +
+  facet_wrap(vars(school_year))
+
+p2 <- ggplot(df) +
+  geom_line(aes(x = day, y = per_present, group = school_year, color = as.factor(school_year)))
+
+p1 / p2
+```
+
+
