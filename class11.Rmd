@@ -1,0 +1,201 @@
+---
+title: "Potential Outcomes in R"
+output: html_notebook
+---
+
+```{r}
+rm(list=ls())
+
+library(tidyverse)
+library(latex2exp)
+
+# setup libraries
+theme_set(theme_minimal())
+
+# functions
+constrain <- function(v, min, max) {
+  case_when(
+    v < min ~ min,
+    v > max ~ max,
+    TRUE ~ v
+  )
+}
+```
+
+## Potential Outcomes
+
+$$
+ATE = E[Y_i^1 - Y_i^0]
+$$
+
+#### Task 1: Simulate 100,000 student test scores with a mean of 100 and standard deviation of 25. Test scores should not be lower than 0 or greater than 200. Then, plot the distribution. (Hint: Look up the R stats function rnorm.)
+
+
+```{r}
+N <- 100000
+mean <- 100
+sd <- 25
+
+Y0 <- rnorm(N, mean, sd) %>% constrain(0, 200)
+
+ggplot() +
+  geom_density(aes(x=Y0)) +
+  labs(x=TeX("$Y^0$"))
+```
+#### Task 2: Imagine another universe where the only difference is the students from Task 1 had a treatment which boosted their performance on the test. Add a mean shift of 5 with a standard deviation of 2 to all the test scores from Task 1. Test scores should still not be lower than 0 or greater than 200. Then, plot both distributions together.
+
+```{r}
+Y1 <- (Y0 + rnorm(N, 5, 2)) %>% constrain(0, 200)
+
+ggplot() +
+  geom_density(aes(x=Y0), color="lightgrey") +
+  geom_density(aes(x=Y1)) +
+  labs(x=TeX("$Y^1$"), caption=TeX("The grey line is $Y^0$."))
+```
+#### Task 3: Calculate the true treatment effect for each student. Then, calculate the true average treatment effect for the population. Plot the treatment effect distribution and the average treatment effect.
+
+```{r}
+TE <- Y1 - Y0
+ATE <- mean(TE)
+
+ggplot() +
+  geom_density(aes(x = TE)) +
+  geom_vline(aes(xintercept = ATE), color="red", linetype="dashed") +
+  geom_text(aes(x=6.6, y=0.04, label=paste0("ATE = ", round(ATE, 4))), color="red") +
+  labs(x = TeX("$Y^1 - Y^0$"))
+```
+Unfortunately, $Y^0$ and $Y^1$ can never be observed for the same individual. So, we have to estimate. Since,
+
+$$
+\begin{align}
+ATE &= E[Y_i^1 - Y_i^0] \\ 
+&= E[Y^1] - E[Y^0]
+\end{align}
+$$
+the outcome under treatment and control can be estimated separately from samples of the population.
+
+$$
+E[Y^1|S=1] = E[Y^1] \\
+E[Y^0|S=2] = E[Y^0]
+$$
+The estimated ATE then is given by:
+
+$$
+\begin{align}
+ATE &= E[Y_i^1 - Y_i^0] \\
+&= E[Y^1] - E[Y^0] \\
+&= E[Y^1|S=1] - E[Y^0|S=2]
+\end{align}
+$$
+
+```{r}
+n <- 200
+
+population <- data.frame(Y0, Y1, TE)
+sample <- slice_sample(population, n=n)
+
+data.frame(
+  variable = c("Y0", "Y1"),
+  pop_mean = c(mean(population$Y0), mean(population$Y1)),
+  sample_mean = c(mean(sample$Y0), mean(sample$Y1)),
+  est_se = c(sd(sample$Y0)/sqrt(n), sd(sample$Y1)/sqrt(n)),
+  actual_se = c(sd(population$Y0)/sqrt(n), sd(population$Y1)/sqrt(n))
+)
+```
+
+$$
+se = \frac{sd}{\sqrt{n}}
+$$
+What is the standard error?
+
+#### Task 4: Demonstrate that the standard error is the standard deviation of the mean upon repeated sampling.
+
+```{r}
+n <- 200
+
+sample_means <- sapply(1:10000, function(i) {
+  sample <- slice_sample(population, n=n)
+  sample_mean <- mean(sample$Y1)
+  
+  return(sample_mean)
+})
+
+ggplot() +
+  geom_density(aes(x = sample_means)) +
+  annotate("text", 109, 0.125, label=paste0("SD = ", round(sd(sample_means), 4)))
+```
+$$
+ATE = E[Y_i^1 - Y_i^0] = E[Y^1] - E[Y^0] = E[Y^1|S=1] - E[Y^0|S=2]
+$$
+```{r}
+sample_1 <- slice_sample(population, n=n)
+sample_2 <- slice_sample(population, n=n)
+
+t.test(sample_1$Y1, sample_2$Y0, paired=T, var.equal=T)
+
+df <- data.frame(
+  Y = c(sample_1$Y1, sample_2$Y0),
+  D = rep(c(1, 0), each=n)
+)
+
+lm(Y ~ D, data=df) %>% summary
+```
+That's not actually how an RCT is done.
+
+$$
+ATE = E[Y_i^1 - Y_i^0] = E[Y^1] - E[Y^0] = E[Y^1|S=1, D=1] - E[Y^0|S=1, D=0]
+$$
+```{r}
+sample_RCT <- slice_sample(population, n=n*2)
+
+sample_RCT <- sample_RCT %>%
+  mutate(
+    D = ifelse(row_number() <= n, 1, 0),
+    Y = ifelse(D == 1, Y1, Y0)
+    )
+
+t.test(sample_RCT[which(sample_RCT$D == 1), "Y"], sample_RCT[which(sample_RCT$D == 0), "Y"], paired=T, var.equal=T)
+
+sample_RCT %>%
+  lm(Y ~ D, data=.) %>% summary
+```
+These aren't actually good estimators for an RCT because they ignore the design. Randomization in an RCT is simple random sampling from a finite sample not an infinite population.
+
+### Randomization test
+
+```{r}
+treatment_effect_rct <- function(df) {
+  Y1 <- filter(df, D==1) %>% pull(Y)
+  Y0 <- filter(df, D==0) %>% pull(Y)
+  
+  mean(Y1) - mean(Y0)
+}
+
+shuffle_treatment_rct <- function(df) {
+  reshuffled_df <- df
+  reshuffled_df[,"D"] <- sample(reshuffled_df[,"D"], size = nrow(reshuffled_df), replace = FALSE)
+  return(reshuffled_df)
+}
+
+actual_treatment_effect <- treatment_effect_rct(sample_RCT)
+
+random_treatment_effects <- sapply(1:10000,
+  function(x) {
+    df <- shuffle_treatment_rct(sample_RCT)
+    return(treatment_effect_rct(df))
+  }
+)
+
+p <- sum(random_treatment_effects > actual_treatment_effect) / length(random_treatment_effects)
+
+ggplot() +
+  geom_histogram(aes(x = random_treatment_effects), bins=40) +
+  geom_vline(aes(xintercept = actual_treatment_effect), color="red", linetype="dashed") +
+  annotate("text", 8, 600, label=paste0("p = ", p))
+```
+
+
+
+
+
+
