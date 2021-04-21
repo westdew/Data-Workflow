@@ -1,0 +1,108 @@
+---
+title: "Descriptive Tables in R"
+output: html_notebook
+---
+
+```{r}
+rm(list=ls())
+
+library(tidyverse)
+
+# functions
+constrain <- function(v, min, max) {
+  case_when(
+    v < min ~ min,
+    v > max ~ max,
+    TRUE ~ v
+  )
+}
+```
+
+# Simulate School Data
+
+```{r}
+N <- 10000
+M <- 50
+
+income <- rexp(N, rate=0.02)
+female <- as.integer(runif(N) > 0.5)
+
+score <- constrain(log(income)*25 + rnorm(N, 5, 25), 0, 200)
+
+df <- data.frame(
+  score, income, female
+)
+
+df <- df %>%
+  arrange(income) %>%
+  mutate(schid = rep(1:M, each=N/M))
+```
+
+# Simulate RCT Data
+
+```{r}
+schids <- c(3, 7, 40, 43, 47)
+
+#sample <- slice_sample(df, n=400)
+sample <- filter(df, schid %in% schids)
+sample_n <- nrow(sample)
+```
+
+## Simple Randomization
+
+```{r}
+analytic_1 <- sample %>%
+  mutate(r = runif(sample_n)) %>%
+  arrange(r) %>%
+  mutate(treatment = rep(0:1, each=sample_n/2)) %>%
+  select(-r) %>%
+  arrange(schid) %>%
+  mutate(score = ifelse(treatment == 1, score+10, score))
+```
+
+```{r}
+table_1 <- analytic_1 %>% 
+  group_by(treatment) %>% 
+  summarize(
+    `% Female` = mean(female)*100,
+    `Avg. Income` = mean(income),
+    N = n(),
+    .groups="drop"
+    ) %>% select(-treatment) %>% t
+
+colnames(table_1) <- c("Comparison", "Treatment")
+```
+
+```{r}
+lm(score ~ treatment, data=analytic_1) %>% summary
+```
+
+
+## Block Randomization
+
+```{r}
+analytic_2 <- sample %>%
+  mutate(r = runif(sample_n)) %>%
+  arrange(schid, r) %>%
+  mutate(treatment = rep(0:1, each=sample_n/5/2, times=5)) %>%
+  select(-r) %>%
+  arrange(schid) %>%
+  mutate(score = ifelse(treatment == 1, score+10, score))
+```
+
+```{r}
+table_2 <- analytic_2 %>% 
+  group_by(treatment) %>% 
+  summarize(
+    `% Female` = mean(female)*100,
+    `Avg. Income` = mean(income),
+    N = n(),
+    .groups="drop"
+    ) %>% select(-treatment) %>% t
+
+colnames(table_2) <- c("Comparison", "Treatment")
+```
+
+```{r}
+lm(score ~ treatment, data=analytic_2) %>% summary
+```
