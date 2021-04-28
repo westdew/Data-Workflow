@@ -1,0 +1,115 @@
+---
+title: "Bookdown Demo"
+author:
+- "Nathaniel A.  Dewey"
+- "My coauthors"
+date: "4/28/2021"
+output: bookdown::word_document2
+csl: apa.csl
+bibliography: bibliography.bib
+---
+
+```{r setup, include=FALSE}
+rm(list=ls())
+options(scipen=999) # Turn off scientific notation
+knitr::opts_chunk$set(echo=FALSE)
+
+# load libraries
+library(tidyverse)
+
+# laod data
+data("AirPassengers")
+```
+
+# Method
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit [@Stoumbos2000-df]. Mauris nisl tortor, placerat ac libero ac, accumsan congue lectus. Ut dignissim odio quis tincidunt consequat. Integer @Wiemken2018-jn ut nulla ac erat placerat luctus ac eu felis. Aliquam erat volutpat. Quisque finibus, "ante venenatis rutrum tristique", ligula dolor tincidunt metus, et pellentesque leo justo eget ante [@Mohammed2004-zq, p. 363]. Maecenas efficitur, diam ac molestie tempus, neque augue tincidunt lacus, quis interdum elit mi eget erat [@Chen2010-wd; @Schilling2012-tr]. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Aliquam finibus ac nibh vel accumsan [for an example of this see @Superville1994-rs].
+
+## Analysis
+
+This language is math Latex.
+
+$$
+Y = \alpha + \beta x + \varepsilon
+$$
+Fusce tempus malesuada elit non consectetur. Vestibulum eu molestie libero. Nam ut turpis dolor. Nullam facilisis sit amet eros eget vulputate. Integer vestibulum vehicula orci a imperdiet. Mauris feugiat malesuada ligula, et tincidunt purus ullamcorper at. Donec bibendum iaculis cursus.
+
+# Results
+
+```{r}
+analytic <- data.frame(
+  x = 1:length(AirPassengers),
+  y = as.vector(AirPassengers)
+)
+
+fit <- loess(y ~ x, data=analytic, span=0.40)
+```
+
+For the model fit the residual standard error was `r round(summary(fit)$s, 2)`. Table \@ref(tab:table-1)... Sed nec maximus nunc, ac tincidunt erat. Aliquam eget lacus sem. Phasellus commodo maximus velit lobortis ullamcorper. Nulla mollis suscipit accumsan. Maecenas non molestie nulla. Praesent id condimentum lorem. Donec luctus sem non metus pulvinar feugiat. Vestibulum tempus, tellus in aliquam ultrices, dolor augue interdum lorem, eget ullamcorper eros diam ac urna. Cras fermentum sed leo vitae vulputate. In ut leo blandit enim tristique cursus in a sapien. Nam diam urna, venenatis vitae lacus non, consectetur tincidunt nibh. Sed est est, porttitor aliquam nisi ac, mattis efficitur dui.
+
+# Discussion
+
+Nulla facilisi (see Figure \@ref(fig:air-passengers-plot1)). Sed et massa ac lectus venenatis bibendum. Integer posuere nisi in nisi vestibulum ultricies. Praesent sollicitudin, elit gravida commodo vestibulum, est enim laoreet leo, non pellentesque justo orci sit amet leo. Suspendisse tempor magna quis efficitur dictum. Aliquam ultricies erat ut neque congue, in efficitur metus venenatis. Pellentesque congue ornare est non euismod. Aliquam et porttitor ante. Ut porta sed ligula sit amet mollis. Nam mattis quam venenatis lorem efficitur, a feugiat urna cursus. Proin tortor velit, rhoncus ac pharetra vitae, gravida tempor ex. Aenean sollicitudin ante non lectus pharetra ultricies.
+
+# References {-}
+
+<div id="refs"></div>
+
+# Figures & Tables {-}
+
+NOTE: No underscores in figure or table references.
+
+```{r air-passengers-plot1, fig.cap="Number of air passengers over time.", fig.width=8}
+plot(AirPassengers)
+```
+
+```{r}
+data.frame(
+  x = 1:length(AirPassengers),
+  y = predict(fit)
+) %>% plot(type="l")
+```
+
+```{r table-1}
+analytic %>%
+  mutate(
+    `Year` = 1949 + floor((x-1)/12)
+  ) %>%
+  group_by(Year) %>%
+  summarize(
+    `Mean Passengers` = mean(y),
+    .groups = "drop"
+  ) %>% knitr::kable(
+    format="pandoc",
+    booktabs = TRUE,
+    align = 'r',
+    digits = 1,
+    caption = 'Mean Air Passengers each Year from 1949-1961'
+  )
+```
+
+
+```{r supressing-stuff}
+# suppressMessages(
+#   {
+#     tbl <- analytic %>%
+#       mutate(
+#         `Year` = 1949 + floor((x-1)/12)
+#       ) %>%
+#       group_by(Year) %>%
+#       summarize(
+#         `Mean Passengers` = mean(y)
+#       ) %>% knitr::kable(
+#         format="pandoc",
+#         booktabs = TRUE,
+#         align = 'r',
+#         digits = 1,
+#         caption = 'Mean Air Passengers each Year from 1949-1961'
+#       )
+#     
+#     b <- 1
+#   }
+# )
+# 
+#  suppressWarnings(print(tbl))
+```
